@@ -24,7 +24,7 @@ jobs:
                     dotnet-version: 8.0.x
 
              - name: Verify C# build
-               run: dotnet build --configuration Release
+               run: dotnet build just-only-tnt.csproj
 
              - name: Validate export presets
                run: |
