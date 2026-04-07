@@ -1,0 +1,50 @@
+name: Build And Release
+
+on:
+     push:
+          tags:
+             - "v*"
+
+permissions:
+     contents: write
+
+jobs:
+     export:
+          name: Export Godot Game
+          runs-on: ubuntu-latest
+
+          steps:
+             - name: Checkout
+               uses: actions/checkout@v5
+
+             - name: Validate export presets
+               run: |
+                    if [ ! -f export_presets.cfg ]; then
+                      echo "export_presets.cfg is missing. Create export presets in Godot first." >&2
+                      exit 1
+                    fi
+
+             - name: Export game
+               id: export
+               uses: firebelley/godot-export@v7.0.0
+               with:
+                    relative_project_path: ./
+                    cache: true
+                    archive_output: true
+                    use_preset_export_path: true
+                    presets_to_export: Windows Desktop,Linux/BSD
+                    godot_executable_download_url: https://downloads.godotengine.org/?flavor=stable&platform=linux.64&slug=mono_linux_x86_64.zip&version=4.6
+                    godot_export_templates_download_url: https://downloads.godotengine.org/?flavor=stable&platform=templates&slug=mono_export_templates.tpz&version=4.6
+
+             - name: Upload build artifacts
+               uses: actions/upload-artifact@v4
+               with:
+                    name: just-only-tnt-builds-${{ github.run_number }}
+                    path: ${{ steps.export.outputs.archive_directory }}/*
+
+             - name: Create GitHub release (tag builds)
+               if: startsWith(github.ref, 'refs/tags/')
+               uses: softprops/action-gh-release@v2
+               with:
+                    files: ${{ steps.export.outputs.archive_directory }}/*
+                    generate_release_notes: true
