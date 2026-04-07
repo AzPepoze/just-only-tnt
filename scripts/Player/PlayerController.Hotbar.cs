@@ -9,7 +9,22 @@ public sealed partial class PlayerController
         int itemCount = 2;
         int current = (int)_selectedItem;
         int next = (current + delta + itemCount) % itemCount;
-        _selectedItem = (HotbarItem)next;
+        SetSelectedItem((HotbarItem)next);
+    }
+
+    private void SetSelectedItem(HotbarItem item)
+    {
+        if (_selectedItem == item)
+        {
+            return;
+        }
+
+        _selectedItem = item;
+        if (_selectedItem != HotbarItem.Tnt)
+        {
+            ResetFillPlacementState();
+        }
+
         UpdateHotbarUi();
     }
 

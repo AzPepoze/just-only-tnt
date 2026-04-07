@@ -3,10 +3,6 @@
 [ext_resource type="Script" uid="uid://dfu3w3mw85d2" path="res://scripts/GameBootstrap.cs" id="1_gameroot"]
 
 [sub_resource type="Environment" id="Environment_o5qli"]
-ssao_enabled = true
-ssil_enabled = true
-sdfgi_enabled = true
-fog_enabled = true
 
 [node name="Main" type="Node3D" unique_id=1063713137]
 script = ExtResource("1_gameroot")

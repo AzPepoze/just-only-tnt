@@ -30,5 +30,6 @@ public partial class WorldConfig : Resource
 	[Export(PropertyHint.Range, "0,512,1")] public int DebrisMaxPerExplosion { get; set; } = 64;
 	[Export(PropertyHint.Range, "0.1,10.0,0.1")] public float DebrisLifetimeSeconds { get; set; } = 2.2f;
 	[Export(PropertyHint.Range, "0.1,100.0,0.1")] public float DebrisImpulse { get; set; } = 14.0f;
+	[Export] public bool SpawnDebrisEnabled { get; set; } = true;
 	[Export(PropertyHint.Range, "1.0,100.0,1.0")] public float InteractionDistance { get; set; } = 9.0f;
 }

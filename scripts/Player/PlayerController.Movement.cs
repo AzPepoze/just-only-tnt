@@ -11,6 +11,13 @@ public sealed partial class PlayerController
             return;
         }
 
+        if (_optionsMenuOpen)
+        {
+            Velocity = Vector3.Zero;
+            ResetFillPlacementState();
+            return;
+        }
+
         if (!_isFlying && _initialGroundLockActive)
         {
             _initialGroundLockTimer += (float)delta;
@@ -104,12 +111,7 @@ public sealed partial class PlayerController
 
         MoveAndSlide();
 
-        bool placePressed = _placePressedQueued;
-        _placePressedQueued = false;
-        if (placePressed)
-        {
-            HandleSecondaryAction();
-        }
+        HandleSecondaryActionState(dt);
 
         bool ignitePressed = _ignitePressedQueued;
         _ignitePressedQueued = false;

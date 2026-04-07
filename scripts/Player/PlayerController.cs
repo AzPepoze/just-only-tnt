@@ -1,4 +1,5 @@
 using Godot;
+using justonlytnt;
 using justonlytnt.Gameplay;
 using justonlytnt.World;
 
@@ -24,6 +25,7 @@ public sealed partial class PlayerController : CharacterBody3D
     [Export] public float FlyVerticalSpeed { get; set; } = 10f;
     [Export] public float DoubleTapWindowSeconds { get; set; } = 0.28f;
     [Export] public float InitialGroundLockSeconds { get; set; } = 2.5f;
+    [Export(PropertyHint.Range, "0.1,1.2,0.05")] public float FillHoldSeconds { get; set; } = 0.3f;
 
     private VoxelWorld? _world;
     private TntSystem? _tnt;
@@ -38,15 +40,26 @@ public sealed partial class PlayerController : CharacterBody3D
     private bool _cachedJumpHeld;
     private bool _cachedDescendHeld;
     private bool _cachedSprintHeld;
+    private bool _cachedPlaceHeld;
     private bool _jumpPressedQueued;
     private bool _placePressedQueued;
+    private bool _placeReleasedQueued;
     private bool _ignitePressedQueued;
     private HotbarItem _selectedItem = HotbarItem.Tnt;
+    private bool _fillPlacementStarted;
+    private bool _fillModeActive;
+    private float _fillHoldTimer;
+    private Vector3I _fillStartBlock;
+    private Vector3I _fillEndBlock;
+    private MeshInstance3D? _fillPreview;
+    private BoxMesh? _fillPreviewMesh;
 
     private PanelContainer? _slot1Panel;
     private PanelContainer? _slot2Panel;
     private Label? _slot1Label;
     private Label? _slot2Label;
+    private CanvasLayer? _optionsLayer;
+    private bool _optionsMenuOpen;
 
     public void Setup(VoxelWorld world, TntSystem tnt)
     {
@@ -58,12 +71,25 @@ public sealed partial class PlayerController : CharacterBody3D
     {
         EnsureInputActions();
         BuildCollisionAndCamera();
+        BuildFillPreview();
+        BuildOptionsMenu();
         BuildHotbarUi();
         UpdateHotbarUi();
         BuildDebugOverlay();
         CacheHardwareInfo();
 
         Input.MouseMode = Input.MouseModeEnum.Captured;
+    }
+
+    public void ApplyRuntimeSettings(GameBootstrap.PlayerRuntimeSettings settings)
+    {
+        WalkSpeed = settings.WalkSpeed;
+        SprintSpeed = settings.SprintSpeed;
+        JumpVelocity = settings.JumpVelocity;
+        MouseSensitivity = settings.MouseSensitivity;
+        FlySpeed = settings.FlySpeed;
+        FlySprintSpeed = settings.FlySprintSpeed;
+        FillHoldSeconds = settings.FillHoldSeconds;
     }
 
     private void BuildCollisionAndCamera()

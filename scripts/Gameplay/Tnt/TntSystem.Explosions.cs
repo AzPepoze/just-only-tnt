@@ -15,7 +15,12 @@ public sealed partial class TntSystem
 
 		ExplosionResult result = _world.ApplyExplosion(center, _config.TntBlastRadius, _config.TntExplosionImpulse);
 		IgniteChainTnt(result, center);
-		SpawnDebris(result, center);
+
+		if (_config.SpawnDebrisEnabled)
+		{
+			SpawnDebris(result, center);
+		}
+
 		ApplyRadialImpulseToPrimedTnt(center, _config.TntBlastRadius, _config.TntExplosionImpulse);
 	}
 

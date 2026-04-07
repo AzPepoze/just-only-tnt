@@ -83,15 +83,20 @@ public sealed partial class TntSystem : Node3D
 
 	public bool PlaceTnt(Vector3I targetBlock, Vector3 normal)
 	{
-		if (_world is null)
-		{
-			return false;
-		}
-
 		Vector3I placeAt = targetBlock + new Vector3I(
 			Mathf.RoundToInt(normal.X),
 			Mathf.RoundToInt(normal.Y),
 			Mathf.RoundToInt(normal.Z));
+
+		return PlaceTntAt(placeAt);
+	}
+
+	public bool PlaceTntAt(Vector3I placeAt)
+	{
+		if (_world is null)
+		{
+			return false;
+		}
 
 		if (_world.GetBlock(placeAt) != BlockType.Air)
 		{
@@ -100,6 +105,52 @@ public sealed partial class TntSystem : Node3D
 
 		_world.SetBlock(placeAt, BlockType.Tnt);
 		return true;
+	}
+
+	public int FillTntBox(Vector3I startInclusive, Vector3I endInclusive)
+	{
+		if (_world is null)
+		{
+			return 0;
+		}
+
+		Vector3I min = new(
+			Mathf.Min(startInclusive.X, endInclusive.X),
+			Mathf.Min(startInclusive.Y, endInclusive.Y),
+			Mathf.Min(startInclusive.Z, endInclusive.Z));
+
+		Vector3I max = new(
+			Mathf.Max(startInclusive.X, endInclusive.X),
+			Mathf.Max(startInclusive.Y, endInclusive.Y),
+			Mathf.Max(startInclusive.Z, endInclusive.Z));
+
+		int placedCount = 0;
+		for (int y = min.Y; y <= max.Y; y++)
+		{
+			for (int z = min.Z; z <= max.Z; z++)
+			{
+				for (int x = min.X; x <= max.X; x++)
+				{
+					if (OverwriteWithTnt(new Vector3I(x, y, z)))
+					{
+						placedCount++;
+					}
+				}
+			}
+		}
+
+		return placedCount;
+	}
+
+	private bool OverwriteWithTnt(Vector3I position)
+	{
+		if (_world is null)
+		{
+			return false;
+		}
+
+		_world.SetBlock(position, BlockType.Tnt);
+		return _world.GetBlock(position) == BlockType.Tnt;
 	}
 
 	public bool IgniteTnt(Vector3I targetBlock)

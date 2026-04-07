@@ -6,10 +6,26 @@ public sealed partial class PlayerController
 {
     public override void _Process(double delta)
     {
+        if (_optionsMenuOpen)
+        {
+            _cachedMoveInput = Vector2.Zero;
+            _cachedJumpHeld = false;
+            _cachedDescendHeld = false;
+            _cachedSprintHeld = false;
+            _cachedPlaceHeld = false;
+            _jumpPressedQueued = false;
+            _placePressedQueued = false;
+            _placeReleasedQueued = false;
+            _ignitePressedQueued = false;
+            UpdateDebugOverlay(delta);
+            return;
+        }
+
         _cachedMoveInput = Input.GetVector("move_left", "move_right", "move_forward", "move_back");
         _cachedJumpHeld = Input.IsActionPressed("jump");
         _cachedDescendHeld = Input.IsActionPressed("descend");
         _cachedSprintHeld = Input.IsActionPressed("sprint");
+        _cachedPlaceHeld = Input.IsActionPressed("place_tnt");
 
         if (Input.IsActionJustPressed("jump"))
         {
@@ -19,6 +35,11 @@ public sealed partial class PlayerController
         if (Input.IsActionJustPressed("place_tnt"))
         {
             _placePressedQueued = true;
+        }
+
+        if (Input.IsActionJustReleased("place_tnt"))
+        {
+            _placeReleasedQueued = true;
         }
 
         if (Input.IsActionJustPressed("ignite_tnt"))
@@ -31,6 +52,18 @@ public sealed partial class PlayerController
 
     public override void _UnhandledInput(InputEvent @event)
     {
+        if (@event is InputEventKey esc && esc.Pressed && !esc.Echo && esc.Keycode == Key.Escape)
+        {
+            ToggleOptionsMenu();
+            GetViewport().SetInputAsHandled();
+            return;
+        }
+
+        if (_optionsMenuOpen)
+        {
+            return;
+        }
+
         if (@event is InputEventMouseMotion motion && Input.MouseMode == Input.MouseModeEnum.Captured)
         {
             RotateY(-motion.Relative.X * MouseSensitivity);
@@ -39,13 +72,6 @@ public sealed partial class PlayerController
             {
                 _camera.Rotation = new Vector3(_pitch, 0f, 0f);
             }
-        }
-
-        if (@event is InputEventKey key && key.Pressed && key.Keycode == Key.Escape)
-        {
-            Input.MouseMode = Input.MouseMode == Input.MouseModeEnum.Captured
-                ? Input.MouseModeEnum.Visible
-                : Input.MouseModeEnum.Captured;
         }
 
         if (@event is InputEventKey f3 && f3.Pressed && !f3.Echo && f3.Keycode == Key.F3)
@@ -57,13 +83,11 @@ public sealed partial class PlayerController
         {
             if (numberKey.Keycode == Key.Key1)
             {
-                _selectedItem = HotbarItem.Tnt;
-                UpdateHotbarUi();
+                SetSelectedItem(HotbarItem.Tnt);
             }
             else if (numberKey.Keycode == Key.Key2)
             {
-                _selectedItem = HotbarItem.FlintAndSteel;
-                UpdateHotbarUi();
+                SetSelectedItem(HotbarItem.FlintAndSteel);
             }
         }
 
