@@ -21,6 +21,11 @@ public partial class WorldConfig : Resource
 	[Export(PropertyHint.Range, "8,128,1")] public int BaseTerrainHeight { get; set; } = 28;
 	[Export(PropertyHint.Range, "4,64,1")] public int TerrainAmplitude { get; set; } = 18;
 	[Export(PropertyHint.Range, "0.001,0.2,0.001")] public float TerrainFrequency { get; set; } = 0.04f;
+	[Export(PropertyHint.Range, "64,200000,1")] public int FillBlocksPerFrame { get; set; } = 12000;
+	[Export(PropertyHint.Range, "1,64,1")] public int MaxExplosionsPerFrame { get; set; } = 4;
+	[Export(PropertyHint.Range, "1,512,1")] public int MaxChainSpawnsPerFrame { get; set; } = 24;
+	[Export(PropertyHint.Range, "16,4096,1")] public int MaxActivePrimedTnt { get; set; } = 512;
+	[Export(PropertyHint.Range, "1,512,1")] public int MaxDebrisSpawnsPerFrame { get; set; } = 96;
 
 	[Export(PropertyHint.Range, "0.1,10.0,0.1")] public float TntFuseSeconds { get; set; } = 2.0f;
 	[Export(PropertyHint.Range, "1.0,16.0,0.5")] public float TntBlastRadius { get; set; } = 4.5f;

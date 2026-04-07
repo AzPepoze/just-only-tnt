@@ -9,3 +9,6 @@ script = ExtResource("1_gameroot")
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=333734801]
 environment = SubResource("Environment_o5qli")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=1914221805]
+transform = Transform3D(0.6605391, -0.5417645, 0.51978767, 0, 0.6923195, 0.72159106, -0.7507916, -0.4766391, 0.4573041, 0, 0, 0)

@@ -12,6 +12,7 @@ public sealed partial class VoxelWorld : Node3D
 	[Export] public WorldConfig Config { get; set; } = new();
 
 	public Node3D? PlayerTarget { get; set; }
+	public long PendingFillBlocks => _pendingFillBlocks;
 
 	private readonly Dictionary<ChunkCoord, ChunkRuntime> _chunks = new();
 	private readonly HashSet<ChunkCoord> _visibleSet = new();
@@ -30,6 +31,10 @@ public sealed partial class VoxelWorld : Node3D
 	private CancellationTokenSource? _workerCts;
 
 	private readonly Queue<BuildChunkMeshResult> _pendingMeshApply = new();
+	private readonly Queue<PendingFillOperation> _pendingFillOperations = new();
+	private readonly HashSet<ChunkCoord> _fillDirtyChunks = new();
+	private readonly HashSet<ChunkCoord> _fillRemeshChunks = new();
+	private long _pendingFillBlocks;
 	private double _visibilityTickAccumulator;
 
 	public override void _Ready()
@@ -52,6 +57,7 @@ public sealed partial class VoxelWorld : Node3D
 	{
 		DrainResults();
 		ApplyMeshResults();
+		ProcessQueuedFillOperations();
 		ProcessChunkStreaming();
 
 		if (PlayerTarget is null)
@@ -67,6 +73,49 @@ public sealed partial class VoxelWorld : Node3D
 		}
 
 		UpdateChunkVisibility(PlayerTarget.GlobalPosition);
+	}
+
+	private sealed class PendingFillOperation
+	{
+		public readonly Vector3I Min;
+		public readonly Vector3I Max;
+		public readonly BlockType Type;
+		public int CurrentX;
+		public int CurrentY;
+		public int CurrentZ;
+
+		public PendingFillOperation(Vector3I min, Vector3I max, BlockType type)
+		{
+			Min = min;
+			Max = max;
+			Type = type;
+			CurrentX = min.X;
+			CurrentY = min.Y;
+			CurrentZ = min.Z;
+		}
+
+		public bool IsComplete => CurrentY > Max.Y;
+
+		public Vector3I Current => new(CurrentX, CurrentY, CurrentZ);
+
+		public void Advance()
+		{
+			CurrentX++;
+			if (CurrentX <= Max.X)
+			{
+				return;
+			}
+
+			CurrentX = Min.X;
+			CurrentZ++;
+			if (CurrentZ <= Max.Z)
+			{
+				return;
+			}
+
+			CurrentZ = Min.Z;
+			CurrentY++;
+		}
 	}
 
 	private sealed class ChunkRuntime

@@ -162,6 +162,43 @@ public sealed partial class PlayerController
             }
         });
 
+        AddSectionHeader(content, "Performance");
+        AddIntSettingRow(content, "Fill Blocks / Frame", 64, 200000, config.FillBlocksPerFrame, value =>
+        {
+            if (_world is not null)
+            {
+                _world.Config.FillBlocksPerFrame = value;
+            }
+        });
+        AddIntSettingRow(content, "Max Explosions / Frame", 1, 64, config.MaxExplosionsPerFrame, value =>
+        {
+            if (_world is not null)
+            {
+                _world.Config.MaxExplosionsPerFrame = value;
+            }
+        });
+        AddIntSettingRow(content, "Max Chain Spawns / Frame", 1, 512, config.MaxChainSpawnsPerFrame, value =>
+        {
+            if (_world is not null)
+            {
+                _world.Config.MaxChainSpawnsPerFrame = value;
+            }
+        });
+        AddIntSettingRow(content, "Max Active Primed TNT", 16, 4096, config.MaxActivePrimedTnt, value =>
+        {
+            if (_world is not null)
+            {
+                _world.Config.MaxActivePrimedTnt = value;
+            }
+        });
+        AddIntSettingRow(content, "Max Debris Spawns / Frame", 1, 512, config.MaxDebrisSpawnsPerFrame, value =>
+        {
+            if (_world is not null)
+            {
+                _world.Config.MaxDebrisSpawnsPerFrame = value;
+            }
+        });
+
         AddSectionHeader(content, "TNT");
         AddFloatSettingRow(content, "Fuse Seconds", 0.1, 10.0, 0.1, config.TntFuseSeconds, value =>
         {

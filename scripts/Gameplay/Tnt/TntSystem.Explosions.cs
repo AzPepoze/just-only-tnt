@@ -52,7 +52,7 @@ public sealed partial class TntSystem
 			Vector3 chainVelocity = direction.Normalized() * _rng.RandfRange(2.5f, 6.0f);
 			float fuse = _rng.RandfRange(minFuse, maxFuse);
 
-			SpawnPrimedTnt(removed.Position, fuse, chainVelocity);
+			_pendingChainSpawns.Enqueue(new PendingChainSpawn(removed.Position, fuse, chainVelocity));
 		}
 	}
 
@@ -85,7 +85,6 @@ public sealed partial class TntSystem
 			int index = Mathf.Clamp(Mathf.FloorToInt(i * step), 0, candidates.Count - 1);
 			RemovedBlock removed = candidates[index];
 
-			DebrisBody body = AcquireDebris();
 			Vector3 spawnPosition = new Vector3(
 				removed.Position.X + 0.5f,
 				removed.Position.Y + 0.5f,
@@ -98,8 +97,7 @@ public sealed partial class TntSystem
 			float velocityScale = (_config.DebrisImpulse / (0.25f + length)) * _rng.RandfRange(0.8f, 1.3f);
 			Vector3 velocity = direction.Normalized() * velocityScale;
 
-			body.Activate(spawnPosition, velocity, removed.Type);
-			_activeDebris.Add(new ActiveDebris(body, _config.DebrisLifetimeSeconds));
+			_pendingDebrisSpawns.Enqueue(new PendingDebrisSpawn(spawnPosition, velocity, removed.Type));
 		}
 	}
 

@@ -14,11 +14,19 @@ public sealed partial class TntSystem : Node3D
 
 	private readonly Queue<TntPrimedBody> _tntPool = new();
 	private readonly List<ActiveTnt> _activeTnt = new();
+	private readonly Queue<Vector3> _pendingExplosionQueue = new();
+	private readonly Queue<PendingChainSpawn> _pendingChainSpawns = new();
+	private readonly Queue<PendingDebrisSpawn> _pendingDebrisSpawns = new();
 
 	private readonly Queue<DebrisBody> _debrisPool = new();
 	private readonly List<ActiveDebris> _activeDebris = new();
 
 	private readonly RandomNumberGenerator _rng = new();
+
+	public int ActivePrimedTntCount => _activeTnt.Count;
+	public int PendingExplosionCount => _pendingExplosionQueue.Count;
+	public int PendingChainSpawnCount => _pendingChainSpawns.Count;
+	public int PendingDebrisSpawnCount => _pendingDebrisSpawns.Count;
 
 	public void Setup(VoxelWorld world)
 	{
@@ -63,8 +71,12 @@ public sealed partial class TntSystem : Node3D
 			Vector3 explosionCenter = active.Body.GlobalPosition;
 			RecycleTnt(active.Body);
 			_activeTnt.RemoveAt(i);
-			Explode(explosionCenter);
+			_pendingExplosionQueue.Enqueue(explosionCenter);
 		}
+
+		ProcessPendingExplosions();
+		ProcessPendingChainSpawns();
+		ProcessPendingDebrisSpawns();
 
 		for (int i = _activeDebris.Count - 1; i >= 0; i--)
 		{
@@ -114,43 +126,8 @@ public sealed partial class TntSystem : Node3D
 			return 0;
 		}
 
-		Vector3I min = new(
-			Mathf.Min(startInclusive.X, endInclusive.X),
-			Mathf.Min(startInclusive.Y, endInclusive.Y),
-			Mathf.Min(startInclusive.Z, endInclusive.Z));
-
-		Vector3I max = new(
-			Mathf.Max(startInclusive.X, endInclusive.X),
-			Mathf.Max(startInclusive.Y, endInclusive.Y),
-			Mathf.Max(startInclusive.Z, endInclusive.Z));
-
-		int placedCount = 0;
-		for (int y = min.Y; y <= max.Y; y++)
-		{
-			for (int z = min.Z; z <= max.Z; z++)
-			{
-				for (int x = min.X; x <= max.X; x++)
-				{
-					if (OverwriteWithTnt(new Vector3I(x, y, z)))
-					{
-						placedCount++;
-					}
-				}
-			}
-		}
-
-		return placedCount;
-	}
-
-	private bool OverwriteWithTnt(Vector3I position)
-	{
-		if (_world is null)
-		{
-			return false;
-		}
-
-		_world.SetBlock(position, BlockType.Tnt);
-		return _world.GetBlock(position) == BlockType.Tnt;
+		long queued = _world.QueueOverwriteFill(startInclusive, endInclusive, BlockType.Tnt);
+		return queued > int.MaxValue ? int.MaxValue : (int)queued;
 	}
 
 	public bool IgniteTnt(Vector3I targetBlock)
@@ -188,5 +165,90 @@ public sealed partial class TntSystem : Node3D
 			initialVelocity);
 
 		_activeTnt.Add(new ActiveTnt(body, Mathf.Max(0.05f, fuseSeconds)));
+	}
+
+	private void ProcessPendingExplosions()
+	{
+		if (_config is null)
+		{
+			return;
+		}
+
+		int budget = Mathf.Max(1, _config.MaxExplosionsPerFrame);
+		while (budget > 0 && _pendingExplosionQueue.Count > 0)
+		{
+			Vector3 center = _pendingExplosionQueue.Dequeue();
+			Explode(center);
+			budget--;
+		}
+	}
+
+	private void ProcessPendingChainSpawns()
+	{
+		if (_config is null)
+		{
+			return;
+		}
+
+		int budget = Mathf.Max(1, _config.MaxChainSpawnsPerFrame);
+		int maxActive = Mathf.Max(1, _config.MaxActivePrimedTnt);
+
+		while (budget > 0 && _pendingChainSpawns.Count > 0)
+		{
+			if (_activeTnt.Count >= maxActive)
+			{
+				break;
+			}
+
+			PendingChainSpawn pending = _pendingChainSpawns.Dequeue();
+			SpawnPrimedTnt(pending.Position, pending.FuseSeconds, pending.InitialVelocity);
+			budget--;
+		}
+	}
+
+	private void ProcessPendingDebrisSpawns()
+	{
+		if (_config is null)
+		{
+			return;
+		}
+
+		int budget = Mathf.Max(1, _config.MaxDebrisSpawnsPerFrame);
+		while (budget > 0 && _pendingDebrisSpawns.Count > 0)
+		{
+			PendingDebrisSpawn pending = _pendingDebrisSpawns.Dequeue();
+			DebrisBody body = AcquireDebris();
+			body.Activate(pending.Position, pending.Velocity, pending.Type);
+			_activeDebris.Add(new ActiveDebris(body, _config.DebrisLifetimeSeconds));
+			budget--;
+		}
+	}
+
+	private readonly struct PendingChainSpawn
+	{
+		public readonly Vector3I Position;
+		public readonly float FuseSeconds;
+		public readonly Vector3 InitialVelocity;
+
+		public PendingChainSpawn(Vector3I position, float fuseSeconds, Vector3 initialVelocity)
+		{
+			Position = position;
+			FuseSeconds = fuseSeconds;
+			InitialVelocity = initialVelocity;
+		}
+	}
+
+	private readonly struct PendingDebrisSpawn
+	{
+		public readonly Vector3 Position;
+		public readonly Vector3 Velocity;
+		public readonly BlockType Type;
+
+		public PendingDebrisSpawn(Vector3 position, Vector3 velocity, BlockType type)
+		{
+			Position = position;
+			Velocity = velocity;
+			Type = type;
+		}
 	}
 }

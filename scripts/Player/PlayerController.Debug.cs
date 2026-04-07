@@ -153,6 +153,16 @@ public sealed partial class PlayerController
         sb.AppendLine(chunk.HasValue
             ? $"Chunk: X {chunk.Value.X} | Z {chunk.Value.Z}"
             : "Chunk: N/A");
+        if (_world is not null)
+        {
+            sb.AppendLine($"Pending Fill Blocks: {_world.PendingFillBlocks}");
+        }
+        if (_tnt is not null)
+        {
+            sb.AppendLine($"Active Primed TNT: {_tnt.ActivePrimedTntCount}");
+            sb.AppendLine($"Pending Explosions: {_tnt.PendingExplosionCount} | Pending Chain: {_tnt.PendingChainSpawnCount}");
+            sb.AppendLine($"Pending Debris Spawns: {_tnt.PendingDebrisSpawnCount}");
+        }
 
         sb.AppendLine();
         sb.AppendLine("CPU");

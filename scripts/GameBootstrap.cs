@@ -83,27 +83,6 @@ public sealed partial class GameBootstrap : Node3D
 
 		AddChild(player);
 		world.PlayerTarget = player;
-
-		DirectionalLight3D sun = new()
-		{
-			RotationDegrees = new Vector3(-50f, -20f, 0f),
-			LightEnergy = 1.2f,
-			ShadowEnabled = true,
-		};
-		AddChild(sun);
-
-		WorldEnvironment environment = new();
-		Environment env = new()
-		{
-			BackgroundMode = Environment.BGMode.Sky,
-			AmbientLightSource = Environment.AmbientSource.Sky,
-			TonemapMode = Environment.ToneMapper.Aces,
-		};
-		Sky sky = new();
-		sky.SkyMaterial = new ProceduralSkyMaterial();
-		env.Sky = sky;
-		environment.Environment = env;
-		AddChild(environment);
 	}
 
 	private static WorldConfig CreateDefaultConfig()
@@ -123,6 +102,11 @@ public sealed partial class GameBootstrap : Node3D
 			BaseTerrainHeight = 28,
 			TerrainAmplitude = 20,
 			TerrainFrequency = 0.035f,
+			FillBlocksPerFrame = 20000,
+			MaxExplosionsPerFrame = 64,
+			MaxChainSpawnsPerFrame = 64 * 4,
+			MaxActivePrimedTnt = 512,
+			MaxDebrisSpawnsPerFrame = 32,
 			TntFuseSeconds = 2.0f,
 			TntBlastRadius = 4.5f,
 			TntExplosionImpulse = 30.0f,
@@ -153,6 +137,11 @@ public sealed partial class GameBootstrap : Node3D
 			BaseTerrainHeight = source.BaseTerrainHeight,
 			TerrainAmplitude = source.TerrainAmplitude,
 			TerrainFrequency = source.TerrainFrequency,
+			FillBlocksPerFrame = source.FillBlocksPerFrame,
+			MaxExplosionsPerFrame = source.MaxExplosionsPerFrame,
+			MaxChainSpawnsPerFrame = source.MaxChainSpawnsPerFrame,
+			MaxActivePrimedTnt = source.MaxActivePrimedTnt,
+			MaxDebrisSpawnsPerFrame = source.MaxDebrisSpawnsPerFrame,
 			TntFuseSeconds = source.TntFuseSeconds,
 			TntBlastRadius = source.TntBlastRadius,
 			TntExplosionImpulse = source.TntExplosionImpulse,
