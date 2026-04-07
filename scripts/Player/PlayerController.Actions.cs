@@ -231,6 +231,11 @@ public sealed partial class PlayerController
             return;
         }
 
+        if (Multiplayer.MultiplayerPeer is not null && !Multiplayer.IsServer())
+        {
+            return;
+        }
+
         if (targetedType != BlockType.Air)
         {
             _world.SetBlock(targetBlock, BlockType.Air);

@@ -60,6 +60,7 @@ public sealed partial class PlayerController : CharacterBody3D
     private Label? _slot2Label;
     private CanvasLayer? _optionsLayer;
     private bool _optionsMenuOpen;
+    public float ViewPitch => _pitch;
 
     public void Setup(VoxelWorld world, TntSystem tnt)
     {

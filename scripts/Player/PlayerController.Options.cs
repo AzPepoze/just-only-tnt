@@ -402,6 +402,11 @@ public sealed partial class PlayerController
             return;
         }
 
+        if (Multiplayer.MultiplayerPeer is not null && !Multiplayer.IsServer())
+        {
+            return;
+        }
+
         if (randomizeSeed)
         {
             RandomNumberGenerator rng = new();

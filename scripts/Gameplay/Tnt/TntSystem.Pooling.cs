@@ -52,12 +52,16 @@ public sealed partial class TntSystem
 
 	private struct ActiveTnt
 	{
-		public TntPrimedBody Body;
+		public TntPrimedBody? Body;
+		public Vector3 Position;
+		public Vector3 Velocity;
 		public float Remaining;
 
-		public ActiveTnt(TntPrimedBody body, float remaining)
+		public ActiveTnt(TntPrimedBody? body, Vector3 position, Vector3 velocity, float remaining)
 		{
 			Body = body;
+			Position = position;
+			Velocity = velocity;
 			Remaining = remaining;
 		}
 	}
@@ -65,11 +69,15 @@ public sealed partial class TntSystem
 	private struct ActiveDebris
 	{
 		public DebrisBody Body;
+		public Vector3 Position;
+		public Vector3 Velocity;
 		public float Remaining;
 
-		public ActiveDebris(DebrisBody body, float remaining)
+		public ActiveDebris(DebrisBody body, Vector3 position, Vector3 velocity, float remaining)
 		{
 			Body = body;
+			Position = position;
+			Velocity = velocity;
 			Remaining = remaining;
 		}
 	}

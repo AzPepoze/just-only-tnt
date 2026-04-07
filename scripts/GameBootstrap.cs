@@ -1,5 +1,6 @@
 using Godot;
 using justonlytnt.Gameplay;
+using justonlytnt.Networking;
 using justonlytnt.Player;
 using justonlytnt.World;
 
@@ -38,6 +39,12 @@ public sealed partial class GameBootstrap : Node3D
 
 	private static WorldConfig? _queuedWorldConfig;
 	private static PlayerRuntimeSettings? _queuedPlayerSettings;
+	private VoxelWorld? _world;
+	private TntSystem? _tnt;
+	private PlayerController? _localPlayer;
+	private Node3D? _serverStreamTarget;
+	private bool _networkEnabled;
+	private bool _dedicatedServer;
 
 	public static void QueueNextWorld(WorldConfig config, PlayerRuntimeSettings playerSettings)
 	{
@@ -47,42 +54,64 @@ public sealed partial class GameBootstrap : Node3D
 
 	public override void _Ready()
 	{
+		LaunchOptions.ParseCliOnce();
+		LaunchMode mode = LaunchOptions.Mode;
+		_dedicatedServer = mode == LaunchMode.DedicatedServer;
+		_networkEnabled = mode is LaunchMode.Host or LaunchMode.Client or LaunchMode.DedicatedServer;
+		SetupMultiplayer(mode);
+
 		WorldConfig config = _queuedWorldConfig is not null
 			? CloneConfig(_queuedWorldConfig)
 			: CreateDefaultConfig();
+		if (LaunchOptions.OverrideSeed.HasValue)
+		{
+			config.Seed = LaunchOptions.OverrideSeed.Value;
+		}
 
 		PlayerRuntimeSettings? queuedPlayerSettings = _queuedPlayerSettings;
 		_queuedWorldConfig = null;
 		_queuedPlayerSettings = null;
 
-		VoxelWorld world = new()
+		_world = new VoxelWorld
 		{
 			Name = "VoxelWorld",
 			Config = config,
 		};
-		AddChild(world);
+		AddChild(_world);
 
-		TntSystem tnt = new()
+		_tnt = new TntSystem
 		{
 			Name = "TntSystem",
 			ProcessPriority = -1,
 		};
-		AddChild(tnt);
-		tnt.Setup(world);
+		AddChild(_tnt);
+		_tnt.Setup(_world);
+		_tnt.ConfigureNetworking(_networkEnabled, _dedicatedServer);
 
-		PlayerController player = new()
+		if (!_dedicatedServer)
 		{
-			Name = "Player",
-			Position = new Vector3(0, 42, 0),
-		};
-		player.Setup(world, tnt);
-		if (queuedPlayerSettings.HasValue)
+			_localPlayer = new PlayerController
+			{
+				Name = "Player",
+				Position = new Vector3(0, 42, 0),
+			};
+			_localPlayer.Setup(_world, _tnt);
+			if (queuedPlayerSettings.HasValue)
+			{
+				_localPlayer.ApplyRuntimeSettings(queuedPlayerSettings.Value);
+			}
+
+			AddChild(_localPlayer);
+			_world.PlayerTarget = mode == LaunchMode.Client ? null : _localPlayer;
+		}
+		else
 		{
-			player.ApplyRuntimeSettings(queuedPlayerSettings.Value);
+			_serverStreamTarget = new Node3D { Name = "ServerStreamTarget" };
+			AddChild(_serverStreamTarget);
+			_world.PlayerTarget = _serverStreamTarget;
 		}
 
-		AddChild(player);
-		world.PlayerTarget = player;
+		InitializeNetworkRuntime(mode);
 	}
 
 	private static WorldConfig CreateDefaultConfig()
@@ -103,9 +132,9 @@ public sealed partial class GameBootstrap : Node3D
 			TerrainAmplitude = 20,
 			TerrainFrequency = 0.035f,
 			FillBlocksPerFrame = 20000,
-			MaxExplosionsPerFrame = 64,
-			MaxChainSpawnsPerFrame = 64 * 4,
-			MaxActivePrimedTnt = 512,
+			MaxExplosionsPerFrame = 256,
+			MaxChainSpawnsPerFrame = 256 * 4,
+			MaxActivePrimedTnt = 256 * 4,
 			MaxDebrisSpawnsPerFrame = 32,
 			TntFuseSeconds = 2.0f,
 			TntBlastRadius = 4.5f,

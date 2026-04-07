@@ -14,11 +14,23 @@ public sealed partial class TntSystem
 		}
 
 		ExplosionResult result = _world.ApplyExplosion(center, _config.TntBlastRadius, _config.TntExplosionImpulse);
+		BroadcastExplosionDelta(result.RemovedBlocks, center);
 		IgniteChainTnt(result, center);
 
 		if (_config.SpawnDebrisEnabled)
 		{
-			SpawnDebris(result, center);
+			if (_networked)
+			{
+				if (!_dedicatedServer)
+				{
+					Godot.Collections.Array<int> packed = SerializeRemovedBlocks(result.RemovedBlocks);
+					SpawnClientDebrisFromExplosion(packed, center);
+				}
+			}
+			else
+			{
+				SpawnDebris(result, center);
+			}
 		}
 
 		ApplyRadialImpulseToPrimedTnt(center, _config.TntBlastRadius, _config.TntExplosionImpulse);
@@ -105,8 +117,8 @@ public sealed partial class TntSystem
 	{
 		for (int i = 0; i < _activeTnt.Count; i++)
 		{
-			TntPrimedBody body = _activeTnt[i].Body;
-			Vector3 offset = body.GlobalPosition - center;
+			ActiveTnt active = _activeTnt[i];
+			Vector3 offset = active.Position - center;
 			float distance = offset.Length();
 			if (distance > radius * 2.0f)
 			{
@@ -115,7 +127,8 @@ public sealed partial class TntSystem
 
 			float attenuation = 1.0f / (0.2f + distance);
 			Vector3 impulse = (offset.Normalized() + (Vector3.Up * 0.25f)) * (power * attenuation * 0.08f);
-			body.ApplyCentralImpulse(impulse);
+			active.Velocity += impulse;
+			_activeTnt[i] = active;
 		}
 	}
 }

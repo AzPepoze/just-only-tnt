@@ -22,10 +22,10 @@ public sealed partial class VoxelWorld
         return runtime.Data.Get(local.X, local.Y, local.Z);
     }
 
-    public void SetBlock(Vector3I globalPos, BlockType type)
-    {
-        if (globalPos.Y < 0 || globalPos.Y >= Config.ChunkHeight)
-        {
+	public void SetBlock(Vector3I globalPos, BlockType type)
+	{
+		if (globalPos.Y < 0 || globalPos.Y >= Config.ChunkHeight)
+		{
             return;
         }
 
@@ -43,12 +43,42 @@ public sealed partial class VoxelWorld
 
         if (local.X == 0) TouchNeighbor(new ChunkCoord(coord.X - 1, coord.Z));
         if (local.X == Config.ChunkSize - 1) TouchNeighbor(new ChunkCoord(coord.X + 1, coord.Z));
-        if (local.Z == 0) TouchNeighbor(new ChunkCoord(coord.X, coord.Z - 1));
-        if (local.Z == Config.ChunkSize - 1) TouchNeighbor(new ChunkCoord(coord.X, coord.Z + 1));
-    }
+		if (local.Z == 0) TouchNeighbor(new ChunkCoord(coord.X, coord.Z - 1));
+		if (local.Z == Config.ChunkSize - 1) TouchNeighbor(new ChunkCoord(coord.X, coord.Z + 1));
+	}
 
-    public ExplosionResult ApplyExplosion(Vector3 center, float radius, float power)
-    {
+	public void QueueSetBlocksFromPacked(
+		Godot.Collections.Array<int> packed,
+		BlockType defaultType,
+		int stride = 4,
+		bool usePackedType = false)
+	{
+		if (packed.Count < 3)
+		{
+			return;
+		}
+
+		int safeStride = Mathf.Max(3, stride);
+		HashSet<ChunkCoord> dirtyChunks = new();
+		HashSet<ChunkCoord> remeshChunks = new();
+
+		for (int i = 0; i + 2 < packed.Count; i += safeStride)
+		{
+			Vector3I globalPos = new(packed[i], packed[i + 1], packed[i + 2]);
+			BlockType type = defaultType;
+			if (usePackedType && safeStride > 3 && i + 3 < packed.Count)
+			{
+				type = (BlockType)packed[i + 3];
+			}
+
+			ApplyBatchedBlockSet(globalPos, type, dirtyChunks, remeshChunks);
+		}
+
+		ApplyBatchedBlockSetRemesh(dirtyChunks, remeshChunks);
+	}
+
+	public ExplosionResult ApplyExplosion(Vector3 center, float radius, float power)
+	{
         int minX = Mathf.FloorToInt(center.X - radius);
         int maxX = Mathf.CeilToInt(center.X + radius);
         int minY = Mathf.FloorToInt(center.Y - radius);
@@ -127,10 +157,76 @@ public sealed partial class VoxelWorld
             // Reserved for additional impulse integration.
         }
 
-        return new ExplosionResult(removedBlocks);
-    }
+		return new ExplosionResult(removedBlocks);
+	}
 
-    public bool IsChunkLoaded(ChunkCoord coord) => _chunks.TryGetValue(coord, out ChunkRuntime? runtime) && runtime.Data is not null;
+	public bool IsChunkLoaded(ChunkCoord coord) => _chunks.TryGetValue(coord, out ChunkRuntime? runtime) && runtime.Data is not null;
 
-    public bool IsChunkCollisionReady(ChunkCoord coord) => _chunks.TryGetValue(coord, out ChunkRuntime? runtime) && runtime.CollisionReady;
+	public bool IsChunkCollisionReady(ChunkCoord coord) => _chunks.TryGetValue(coord, out ChunkRuntime? runtime) && runtime.CollisionReady;
+
+	private void ApplyBatchedBlockSet(
+		Vector3I globalPos,
+		BlockType type,
+		HashSet<ChunkCoord> dirtyChunks,
+		HashSet<ChunkCoord> remeshChunks)
+	{
+		if (globalPos.Y < 0 || globalPos.Y >= Config.ChunkHeight)
+		{
+			return;
+		}
+
+		ChunkCoord coord = WorldToChunk(globalPos);
+		if (!_chunks.TryGetValue(coord, out ChunkRuntime? runtime) || runtime.Data is null)
+		{
+			return;
+		}
+
+		Vector3I local = WorldToLocal(globalPos);
+		if (runtime.Data.Get(local.X, local.Y, local.Z) == type)
+		{
+			return;
+		}
+
+		runtime.Data.Set(local.X, local.Y, local.Z, type);
+		dirtyChunks.Add(coord);
+		remeshChunks.Add(coord);
+
+		if (local.X == 0) remeshChunks.Add(new ChunkCoord(coord.X - 1, coord.Z));
+		if (local.X == Config.ChunkSize - 1) remeshChunks.Add(new ChunkCoord(coord.X + 1, coord.Z));
+		if (local.Z == 0) remeshChunks.Add(new ChunkCoord(coord.X, coord.Z - 1));
+		if (local.Z == Config.ChunkSize - 1) remeshChunks.Add(new ChunkCoord(coord.X, coord.Z + 1));
+	}
+
+	private void ApplyBatchedBlockSetRemesh(HashSet<ChunkCoord> dirtyChunks, HashSet<ChunkCoord> remeshChunks)
+	{
+		if (remeshChunks.Count == 0)
+		{
+			return;
+		}
+
+		foreach (ChunkCoord coord in dirtyChunks)
+		{
+			if (_chunks.TryGetValue(coord, out ChunkRuntime? runtime) && runtime.Data is not null)
+			{
+				runtime.Version++;
+				runtime.CollisionReady = false;
+			}
+		}
+
+		foreach (ChunkCoord coord in remeshChunks)
+		{
+			if (!_chunks.TryGetValue(coord, out ChunkRuntime? runtime) || runtime.Data is null)
+			{
+				continue;
+			}
+
+			if (!dirtyChunks.Contains(coord))
+			{
+				runtime.Version++;
+				runtime.CollisionReady = false;
+			}
+
+			EnqueueMeshRebuild(coord, runtime, PriorityFor(coord));
+		}
+	}
 }
